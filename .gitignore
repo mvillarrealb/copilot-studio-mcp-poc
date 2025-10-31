@@ -1,0 +1,4 @@
+pat-credentials.env
+sp-credentials.env
+**/main.env
+**/config.sh

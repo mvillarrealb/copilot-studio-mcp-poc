@@ -1,0 +1,28 @@
+spring:
+  ai:
+    mcp:
+      server:
+        name: "MY MCP SERVER"
+        version: "1.0.0"
+        type: "ASYNC"
+ado:
+  organization: https://dev.azure.com/villarrealm
+  project: marcoLabs
+  pat-token: ${ADO_PAT_TOKEN:your-pat-token-here}
+  api:
+    base-url: /_apis
+    versions:
+      wiql: 7.1-preview.2
+      work-items: 7.1-preview.3
+      git: 7.1-preview.1
+      project: 7.1-preview.4
+    endpoints:
+      wiql: /wit/wiql
+      work-items: /wit/workitems
+      projects: /projects
+      repositories: /git/repositories
+
+logging:
+  level:
+    org.ms.mcp: DEBUG
+    reactor.netty: INFO
