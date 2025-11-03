@@ -1,7 +1,7 @@
 package org.ms.mcp;
 
-import org.ms.mcp.tools.ReleaseNoteService;
-import org.ms.mcp.tools.UserStoryService;
+import org.ms.mcp.tools.ReleaseNoteTools;
+import org.ms.mcp.tools.UserStoryTools;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.context.annotation.Bean;
@@ -14,8 +14,8 @@ import java.util.List;
 public class ToolSetup {
     @Bean
     public List<ToolCallback> tools(
-            ReleaseNoteService releaseNoteService,
-            UserStoryService codeReviewService
+            ReleaseNoteTools releaseNoteService,
+            UserStoryTools codeReviewService
     ) {
         List<Object> toolCallbacks = new ArrayList<>();
         toolCallbacks.add(releaseNoteService);

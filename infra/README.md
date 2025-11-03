@@ -4,6 +4,44 @@ This repository contains Terraform modules to deploy a complete Azure Container 
 
 - Resource Group
 - Container Registry
+
+## 🚀 Quick Start con Scripts de Despliegue
+
+### Scripts Disponibles
+
+#### `./deploy.sh` - Despliegue Completo
+Ejecuta el flujo completo: init → validate → plan → apply
+
+```bash
+# Usar configuración por defecto (dev)
+./deploy.sh
+
+# Usar configuración específica
+./deploy.sh dev
+```
+
+#### `./destroy.sh` - Destruir Recursos
+```bash
+./destroy.sh dev  # Requiere escribir "DESTROY" para confirmar
+```
+
+### Configuración
+Edita `environments/dev.tfvars.json` con tus valores:
+
+```json
+{
+  "environment": "dev",
+  "project_name": "mcp-app",
+  "source_code_path": "../ado-demo-mcp",
+  "app_port": 8080,
+  "environment_variables": [
+    {
+      "name": "NODE_ENV", 
+      "value": "production"
+    }
+  ]
+}
+```
 - Log Analytics Workspace
 - Container App Environment
 - Container App Instance with automated build and deployment

@@ -2,7 +2,11 @@ variable "name" {
   description = "Name of the Container App"
   type        = string
 }
-
+variable "image_tag" {
+  description = "Tag of the container image"
+  type        = string
+  default     = "latest"
+}
 variable "resource_group_name" {
   description = "Name of the resource group"
   type        = string
@@ -78,6 +82,11 @@ variable "target_port" {
   description = "Target port for ingress"
   type        = number
   default     = 8080
+  
+  validation {
+    condition     = var.target_port >= 1 && var.target_port <= 65535
+    error_message = "El puerto debe estar entre 1 y 65535."
+  }
 }
 
 variable "external_enabled" {
@@ -104,10 +113,42 @@ variable "registry_identity" {
   default     = "system"
 }
 
+variable "registry_username" {
+  description = "Username for registry authentication (when using admin credentials)"
+  type        = string
+  default     = null
+}
+
+variable "registry_password_secret_name" {
+  description = "Name of the secret containing registry password"
+  type        = string
+  default     = null
+}
+
+variable "registry_password" {
+  description = "Password for registry authentication (when using admin credentials)"
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "environment_variables" {
   description = "Environment variables for the container"
-  type        = map(string)
-  default     = {}
+  type = list(object({
+    name       = string
+    value      = optional(string)
+    secret_ref = optional(string)
+  }))
+  default = []
+  
+  validation {
+    condition = alltrue([
+      for env in var.environment_variables : 
+      (env.value != null && env.secret_ref == null) || 
+      (env.value == null && env.secret_ref != null)
+    ])
+    error_message = "Cada variable de entorno debe tener 'value' O 'secret_ref', pero no ambos."
+  }
 }
 
 variable "tags" {

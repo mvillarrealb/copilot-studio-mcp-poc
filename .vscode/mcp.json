@@ -1,7 +1,7 @@
 {
 	"servers": {
 		"my-mcp-server-45c0b77c": {
-			"url": "http://localhost:8080/sse",
+			"url": "https://mcp-app-dev-ca.gentleplant-5197b8e2.westus.azurecontainerapps.io/sse",
 			"type": "http"
 		}
 	},

@@ -2,3 +2,7 @@ pat-credentials.env
 sp-credentials.env
 **/main.env
 **/config.sh
+*.tfstate
+*.backup
+*.lock.hcl
+*/.terraform/

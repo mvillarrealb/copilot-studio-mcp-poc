@@ -2,8 +2,8 @@ package org.ms.mcp.workflows.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
+import org.ms.mcp.workflows.client.AdoParsingException;
 import org.ms.mcp.workflows.dto.*;
-import org.ms.mcp.workflows.exception.AdoParsingException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -11,7 +11,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Utilidad para parsear respuestas JSON de Azure DevOps a DTOs específicos

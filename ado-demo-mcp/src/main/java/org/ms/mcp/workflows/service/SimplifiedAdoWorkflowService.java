@@ -11,72 +11,61 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Servicio REFACTORIZADO para workflows de Azure DevOps
- * Ahora usa SimplifiedAdoWorkflowClient que retorna DTOs directamente
+ * Servicio ULTRA-SIMPLIFICADO para workflows de Azure DevOps
  * 
- * DOS MÉTODOS PRINCIPALES:
- * - getWorkflowById(Long epicId) -> EpicWorkflowResult
- * - getWorkflowByPartialName(String partialName) -> EpicWorkflowResult
+ * Solo DOS métodos principales que retornan EpicWorkflowResult:
+ * - getWorkflowById(Long epicId)
+ * - getWorkflowByPartialName(String partialName)
  * 
- * ELIMINADO: parsing manual, manejo complejo de errores, código duplicado
+ * El WebClient ya maneja toda la complejidad de parsing y transformación
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AdoWorkflowService {
+public class SimplifiedAdoWorkflowService {
     
-    private final AdoWorkflowClient simplifiedClient;
+    private final AdoWorkflowClient client;
     
     /**
-     * FLUJO 1 SIMPLIFICADO: Búsqueda por Epic ID específica
-     * Una sola llamada al simplified client hace todo el trabajo
+     * FLUJO 1: Obtener workflow completo por Epic ID
+     * Una sola llamada al client hace todo el trabajo
      */
     public Mono<EpicWorkflowResult> getWorkflowById(Long epicId) {
-        log.info("Executing workflow for Epic ID: {}", epicId);
+        log.info("Getting workflow for Epic ID: {}", epicId);
         long startTime = System.currentTimeMillis();
         
-        return simplifiedClient.getCompleteEpicWorkflow(epicId)
-                .map(epicData -> {
-                    long executionTime = System.currentTimeMillis() - startTime;
-                    
-                    return EpicWorkflowResult.builder()
-                            .searchType("BY_ID")
-                            .searchValue(epicId.toString())
-                            .epics(epicData.getEpic() != null ? List.of(epicData) : List.of())
-                            .metadata(EpicWorkflowResult.WorkflowMetadata.builder()
-                                    .executionTimeMs(executionTime)
-                                    .apiCallsCount(3) // epic + stories + tasks
-                                    .hasErrors(false)
-                                    .build())
-                            .build();
-                })
+        return client.getCompleteEpicWorkflow(epicId)
+                .map(epicData -> EpicWorkflowResult.builder()
+                        .searchType("BY_ID")
+                        .searchValue(epicId.toString())
+                        .epics(epicData.getEpic() != null ? List.of(epicData) : List.of())
+                        .metadata(createMetadata(startTime, 3))
+                        .build())
                 .doOnSuccess(result -> log.info("Workflow completed for Epic ID: {} with {} epics in {}ms", 
                         epicId, result.getTotalEpics(), result.getMetadata().getExecutionTimeMs()))
-                .doOnError(error -> log.error("Error executing workflow for Epic ID: {}", epicId, error));
+                .doOnError(error -> log.error("Error in workflow for Epic ID: {}", epicId, error));
     }
     
     /**
-     * FLUJO 2 SIMPLIFICADO: Búsqueda por nombre parcial de épica
-     * Busca épicas y luego obtiene workflows completos usando simplified client
+     * FLUJO 2: Obtener workflow completo por nombre parcial
+     * Busca épicas y luego obtiene sus workflows completos
      */
     public Mono<EpicWorkflowResult> getWorkflowByPartialName(String partialName) {
-        log.info("Executing workflow for Epic partial name: {}", partialName);
+        log.info("Getting workflow for Epic partial name: {}", partialName);
         long startTime = System.currentTimeMillis();
         
-        return simplifiedClient.findEpicsByName(partialName)
+        return client.findEpicsByName(partialName)
                 .flatMap(epics -> {
                     if (epics.isEmpty()) {
-                        return Mono.just(createEmptyResult("BY_PARTIAL_NAME", partialName, startTime, 1));
+                        return Mono.just(createEmptyResult("BY_PARTIAL_NAME", partialName, startTime));
                     }
                     
-                    // Para cada épica encontrada, obtener su workflow completo usando simplified client
+                    // Para cada épica encontrada, obtener su workflow completo
                     List<Mono<EpicWorkflowResult.EpicData>> workflows = epics.stream()
-                            .map(epic -> simplifiedClient.getCompleteEpicWorkflow(epic.getId()))
+                            .map(epic -> client.getCompleteEpicWorkflow(epic.getId()))
                             .toList();
                     
                     return Mono.zip(workflows, epicDataArray -> {
-                        long executionTime = System.currentTimeMillis() - startTime;
-                        
                         List<EpicWorkflowResult.EpicData> epicDataList = new ArrayList<>();
                         for (Object epicData : epicDataArray) {
                             epicDataList.add((EpicWorkflowResult.EpicData) epicData);
@@ -86,31 +75,23 @@ public class AdoWorkflowService {
                                 .searchType("BY_PARTIAL_NAME")
                                 .searchValue(partialName)
                                 .epics(epicDataList)
-                                .metadata(EpicWorkflowResult.WorkflowMetadata.builder()
-                                        .executionTimeMs(executionTime)
-                                        .apiCallsCount(1 + epics.size() * 3) // find epics + (epic+stories+tasks per epic)
-                                        .hasErrors(false)
-                                        .build())
+                                .metadata(createMetadata(startTime, 1 + epics.size() * 3)) // find + (epic+stories+tasks per epic)
                                 .build();
                     });
                 })
                 .doOnSuccess(result -> log.info("Workflow completed for partial name: '{}', found {} epics in {}ms", 
                         partialName, result.getTotalEpics(), result.getMetadata().getExecutionTimeMs()))
-                .doOnError(error -> log.error("Error executing workflow for partial name: {}", partialName, error));
+                .doOnError(error -> log.error("Error in workflow for partial name: {}", partialName, error));
     }
-    
-    // =====================================================
-    // MÉTODOS AUXILIARES SIMPLIFICADOS
-    // =====================================================
     
     /**
      * MÉTODO ADICIONAL: Obtener solo las épicas (sin historias/tareas)
-     * Útil para casos donde solo necesitas información básica de épicas
+     * Para casos donde solo necesitas información básica de épicas
      */
     public Mono<List<EpicInfo>> getEpicsOnly(String partialName) {
         log.info("Getting epics only for partial name: {}", partialName);
         
-        return simplifiedClient.findEpicsByName(partialName)
+        return client.findEpicsByName(partialName)
                 .doOnSuccess(epics -> log.info("Found {} epics for partial name: {}", epics.size(), partialName))
                 .doOnError(error -> log.error("Error getting epics for partial name: {}", partialName, error));
     }
@@ -121,7 +102,7 @@ public class AdoWorkflowService {
     public Mono<List<UserStoryInfo>> getUserStoriesOnly(List<Long> epicIds) {
         log.info("Getting user stories only for epic IDs: {}", epicIds);
         
-        return simplifiedClient.getUserStories(epicIds)
+        return client.getUserStories(epicIds)
                 .doOnSuccess(stories -> log.info("Found {} user stories for {} epics", stories.size(), epicIds.size()))
                 .doOnError(error -> log.error("Error getting user stories for epics: {}", epicIds, error));
     }
@@ -132,21 +113,29 @@ public class AdoWorkflowService {
     public Mono<List<TaskInfo>> getTasksOnly(List<Long> epicIds) {
         log.info("Getting tasks only for epic IDs: {}", epicIds);
         
-        return simplifiedClient.getTasks(epicIds)
+        return client.getTasks(epicIds)
                 .doOnSuccess(tasks -> log.info("Found {} tasks for {} epics", tasks.size(), epicIds.size()))
                 .doOnError(error -> log.error("Error getting tasks for epics: {}", epicIds, error));
     }
     
-    private EpicWorkflowResult createEmptyResult(String searchType, String searchValue, long startTime, int apiCalls) {
+    // =====================================================
+    // MÉTODOS UTILITARIOS PRIVADOS
+    // =====================================================
+    
+    private EpicWorkflowResult createEmptyResult(String searchType, String searchValue, long startTime) {
         return EpicWorkflowResult.builder()
                 .searchType(searchType)
                 .searchValue(searchValue)
-                .epics(new ArrayList<>())
-                .metadata(EpicWorkflowResult.WorkflowMetadata.builder()
-                        .executionTimeMs(System.currentTimeMillis() - startTime)
-                        .apiCallsCount(apiCalls)
-                        .hasErrors(false)
-                        .build())
+                .epics(List.of())
+                .metadata(createMetadata(startTime, 1))
+                .build();
+    }
+    
+    private EpicWorkflowResult.WorkflowMetadata createMetadata(long startTime, int apiCalls) {
+        return EpicWorkflowResult.WorkflowMetadata.builder()
+                .executionTimeMs(System.currentTimeMillis() - startTime)
+                .apiCallsCount(apiCalls)
+                .hasErrors(false)
                 .build();
     }
 }

@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class ReleaseNoteService {
+public class ReleaseNoteTools {
 
     private final AdoWorkflowService adoWorkflowService;
     @Tool(name = "generateReleaseNotes", description = ToolPrompts.RELEASE_NOTE_TOOL)

@@ -1,45 +1,35 @@
-# Use Eclipse Temurin (more secure and maintained) JDK 21
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM mcr.microsoft.com/openjdk/jdk:21-ubuntu AS builder
 
-# Set working directory
+LABEL stage=builder
+LABEL service=ado-demo-mcp
+
 WORKDIR /app
 
-# Copy Gradle wrapper and build files
-COPY gradlew .
-COPY gradle gradle/
-COPY build.gradle .
-COPY settings.gradle .
+COPY gradle ./gradle
+COPY gradlew ./
+COPY build.gradle ./
+COPY settings.gradle ./
 
-# Copy source code
-COPY src src/
+RUN chmod +x gradlew
 
-# Make gradlew executable
-RUN chmod +x ./gradlew
+RUN ./gradlew dependencies --no-daemon
 
-# Build the application
-RUN ./gradlew build -x test
+COPY src ./src
 
-# Use runtime image for smaller footprint
-FROM eclipse-temurin:21-jre-alpine
+RUN ./gradlew clean bootJar --no-daemon -x test
 
-# Create non-root user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+FROM mcr.microsoft.com/openjdk/jdk:21-distroless
 
-# Set working directory
-WORKDIR /app
+LABEL maintainer="marco.villarreal@microsoft.com"
+LABEL service=ado-demo-mcp
+LABEL version=0.0.1-SNAPSHOT
 
-# Copy JAR from build stage
-COPY --from=build /app/build/libs/ado-demo-mcp-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=builder /app/build/libs/*.jar /app/app.jar
 
-# Change ownership to non-root user
-RUN chown -R appuser:appgroup /app
+ENV SPRING_PROFILES_ACTIVE=default \
+    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0" \
+    SERVER_PORT=8080
 
-# Switch to non-root user
-USER appuser
+EXPOSE ${SERVER_PORT}
 
-# Expose port 8080
-EXPOSE 8080
-
-# Run the application
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]
